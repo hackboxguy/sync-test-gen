@@ -21,6 +21,17 @@ cd sync-test-gen
 pip install -r requirements.txt
 ```
 
+## Sample Video
+
+[Tears of Steel](https://mango.blender.org/) (CC-BY 3.0, Blender Foundation) works well as background video:
+
+```bash
+# Download Tears of Steel 1080p (~560MB, H.264, 1920x800, 24fps)
+wget -P assets/ http://ftp.nluug.nl/pub/graphics/blender/demo/movies/ToS/tears_of_steel_1080p.mov
+```
+
+Other mirrors: [ftp.halifax.rwth-aachen.de](http://ftp.halifax.rwth-aachen.de/blender/demo/movies/ToS/tears_of_steel_1080p.mov) | [blender-mirror.kino3d.org](http://blender-mirror.kino3d.org/mango/download.blender.org/demo/movies/ToS/tears_of_steel_1080p.mov)
+
 ## Quick Start
 
 ```bash
@@ -29,7 +40,7 @@ python3 generate.py generate --frames 100 --output test.mkv
 
 # Generate full-length video from input (auto-detects frame count)
 python3 generate.py generate \
-  --input video.mp4 \
+  --input assets/tears_of_steel_1080p.mov \
   --output sync_test.mkv
 
 # Generate specific number of frames at 60fps
