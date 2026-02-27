@@ -2,6 +2,8 @@
 
 A toolkit for generating video streams with overlay patterns for AV synchronization testing. Renders a binary frame counter, scrolling bars, sync dots, alignment grid, scrolling ticker, and snow/noise pattern on top of background video content, then encodes to H.264/H.265/AV1.
 
+![sync-test-gen demo](images/sync-test-video.gif)
+
 ## Prerequisites
 
 - Python 3.8+
