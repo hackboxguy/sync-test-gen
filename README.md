@@ -16,7 +16,7 @@ A toolkit for generating video streams with overlay patterns for AV synchronizat
 # Install system dependencies (Debian/Ubuntu)
 sudo apt-get install -y python3 python3-pip ffmpeg
 
-git clone <repo-url>
+git clone https://github.com/hackboxguy/sync-test-gen.git
 cd sync-test-gen
 pip install -r requirements.txt
 ```
