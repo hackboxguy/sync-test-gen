@@ -125,6 +125,10 @@ python3 generate.py stream INPUT_FILE IP:PORT
 
 Streams the encoded video file in a loop via RTP/UDP using FFmpeg. Press Ctrl+C to stop.
 
+## Notes
+
+**Framerate and input video**: The `--framerate` option sets the output framerate independently of the input video's native framerate. If the input is 24fps and the output is 60fps, the background video will play faster than real-time (each input frame is used once, no duplication or interpolation). This is by design — the purpose of the tool is to produce smooth, glitch-free test patterns with a unique binary counter on every frame, not to preserve the original playback speed of the background content.
+
 ## Overlay Elements
 
 - **Binary Counter**: 32-bit frame number as 8x4 colored rectangle grid (green=1, white=0). Default: single counter at bottom-left. With `--quad-counters`: one counter at the top-left of each screen quadrant (2x2 video wall layout).
