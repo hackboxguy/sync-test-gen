@@ -51,3 +51,31 @@ All 6 elements from the original C/OpenGL `pgen` binary, reimplemented in Python
 - **Single file**: `generate.py` stays under 800 lines. No package structure needed until it grows significantly.
 - **FFmpeg for streaming**: Replaced GStreamer 0.10 pipeline with `ffmpeg -re -stream_loop -1 ... -f rtp` which is simpler and universally available.
 - **Headless operation**: Replaced C/OpenGL renderer with Python/Pillow — no X11 or GPU required.
+
+## Future Features
+
+### High Priority
+
+1. **Audio sync tone** — Periodic beep (e.g., every 1 second) with a corresponding visual flash. Enables audio-to-video (lip sync) measurement. Currently the tool is video-only (`-an`).
+
+2. **Human-readable frame number** — Decimal frame number text overlay (e.g., "Frame: 00247") for quick visual verification without manually decoding the 8x4 binary grid.
+
+3. **Wall clock timestamp burn-in** — Generation timestamp (e.g., `2026-02-27 14:30:05.123`) burned into each frame. Enables absolute glass-to-glass latency measurement by comparing burned-in time with current wall clock at the receiver.
+
+### Medium Priority
+
+4. **SMPTE timecode overlay** — Standard `HH:MM:SS:FF` timecode that broadcast engineers expect. More readable than raw frame numbers in professional workflows.
+
+5. **Additional streaming protocols** — SRT (Secure Reliable Transport) and RIST support beyond RTP. Both are supported by FFmpeg and widely used in modern AV-over-IP.
+
+6. **Binary counter decoder** — A companion mode that takes a screenshot/frame as input, reads the binary counter grid, and outputs the frame number. Closes the loop for automated latency measurement.
+
+7. **Color bars** — SMPTE or EBU color bars for display calibration. Common in broadcast test patterns.
+
+### Nice to Have
+
+8. **Resolution/format presets** — Common broadcast formats like `--preset 1080p25`, `--preset 720p50`, `--preset 2160p30` instead of manually specifying resolution + framerate.
+
+9. **QR code per frame** — Encode frame metadata (frame number, timestamp, stream ID) in a QR code for automated machine reading at the receiver. More robust than binary counter for automated workflows.
+
+10. **Multi-stream ID** — Visible stream identifier (number/color code) to distinguish multiple streams on the receiving end when testing simultaneous streams.
