@@ -11,6 +11,9 @@ A toolkit for generating video streams with overlay patterns for AV synchronizat
 ## Installation
 
 ```bash
+# Install system dependencies (Debian/Ubuntu)
+sudo apt-get install -y python3 python3-pip ffmpeg
+
 git clone <repo-url>
 cd sync-test-gen
 pip install -r requirements.txt
@@ -22,7 +25,12 @@ pip install -r requirements.txt
 # Generate 100 frames with all overlays on blue background
 python3 generate.py generate --frames 100 --output test.mkv
 
-# Generate with a background video
+# Generate full-length video from input (auto-detects frame count)
+python3 generate.py generate \
+  --input video.mp4 \
+  --output sync_test.mkv
+
+# Generate specific number of frames at 60fps
 python3 generate.py generate \
   --input video.mp4 \
   --frames 500 \
@@ -33,21 +41,18 @@ python3 generate.py generate \
 python3 generate.py generate \
   --input video.mp4 \
   --start-time 10 \
-  --frames 300 \
   --output sync_test.mkv
 
 # Custom ticker text instead of default image
 python3 generate.py generate \
   --input video.mp4 \
   --ticker-text "MY SYNC TEST STREAM" \
-  --frames 300 \
   --output sync_test.mkv
 
 # Binary counters in all 4 quadrants (2x2 video wall mode)
 python3 generate.py generate \
   --input video.mp4 \
   --quad-counters \
-  --frames 300 \
   --output sync_test.mkv
 
 # Stream an encoded file via RTP
@@ -68,7 +73,7 @@ python3 generate.py generate [options] --output FILE
 |--------|---------|-------------|
 | `--resolution WxH` | `1920x1080` | Output resolution |
 | `--framerate FPS` | `30` | Frame rate in fps |
-| `--frames N` | `1000` | Number of frames to generate |
+| `--frames N` | auto / `1000` | Number of frames (default: full input video length, or 1000 if no input) |
 | `--codec` | `h264` | Video codec: `h264`, `h265`, or `av1` |
 | `--bitrate BR` | `4M` | Encoding bitrate |
 | `--output FILE` | *(required)* | Output video file path |

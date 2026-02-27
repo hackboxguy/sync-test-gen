@@ -442,9 +442,61 @@ CODEC_MAP = {
 class StreamGenerator:
     """Pipeline controller for generation and streaming."""
 
+    def _probe_frame_count(self, video_path, framerate, start_time=None):
+        """Use ffprobe to get the total number of frames in a video file."""
+        # try nb_frames from container metadata (instant)
+        cmd = [
+            "ffprobe", "-v", "error",
+            "-select_streams", "v:0",
+            "-show_entries", "stream=nb_frames",
+            "-print_format", "csv=p=0",
+            video_path,
+        ]
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            count = int(result.stdout.strip())
+            if count > 0:
+                offset = int(float(start_time) * framerate) if start_time else 0
+                return max(1, count - offset)
+        except (ValueError, subprocess.TimeoutExpired):
+            pass
+
+        # fallback: compute from duration * framerate
+        cmd = [
+            "ffprobe", "-v", "error",
+            "-select_streams", "v:0",
+            "-show_entries", "stream=duration,r_frame_rate",
+            "-print_format", "csv=p=0",
+            video_path,
+        ]
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            parts = result.stdout.strip().split(",")
+            duration = float(parts[0])
+            if start_time:
+                duration = max(0, duration - float(start_time))
+            return max(1, int(duration * framerate))
+        except (ValueError, IndexError, subprocess.TimeoutExpired):
+            pass
+        return None
+
     def generate(self, args):
         """Full pipeline: render overlays, composite on background, encode."""
         width, height = args.width, args.height
+
+        # resolve frame count
+        if args.frames is None:
+            if args.input:
+                print("Probing input video for frame count ...")
+                probed = self._probe_frame_count(args.input, args.framerate, args.start_time)
+                if probed:
+                    args.frames = probed
+                    print(f"  detected {probed} frames")
+                else:
+                    args.frames = 1000
+                    print("  could not detect frame count, using default 1000")
+            else:
+                args.frames = 1000
 
         renderer = OverlayRenderer(
             width, height,
@@ -623,8 +675,8 @@ def main():
         help="Frame rate in fps (default: 30)",
     )
     gen.add_argument(
-        "--frames", type=int, default=1000,
-        help="Number of frames to generate (default: 1000)",
+        "--frames", type=int, default=None,
+        help="Number of frames to generate (default: full input video, or 1000 if no input)",
     )
     gen.add_argument(
         "--codec", choices=list(CODEC_MAP.keys()), default="h264",

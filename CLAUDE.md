@@ -28,7 +28,7 @@ sync-test-gen/
 - `OverlayRenderer` — Stateful class that renders 6 overlay elements onto RGBA Pillow images. Holds pre-computed snow buffer and scaled ticker image. One instance per generation run.
   - Binary counter: 32-bit frame counter in 8x4 grid. Single (bottom-left) or quad mode (top-left of each quadrant).
   - Scrolling bars, sync dots, alignment grid, ticker (image or text-based), snow/noise.
-- `StreamGenerator` — Pipeline controller. Decodes input video via FFmpeg pipe, composites overlays per frame, pipes raw RGB to FFmpeg encoder.
+- `StreamGenerator` — Pipeline controller. Probes input video frame count via `ffprobe` when `--frames` is omitted, decodes input video via FFmpeg pipe, composites overlays per frame, pipes raw RGB to FFmpeg encoder.
 - `main()` — Argparse CLI with `generate` and `stream` subcommands.
 
 ## Coding Style
@@ -45,7 +45,10 @@ sync-test-gen/
 # Basic test (blue background, all overlays)
 python3 generate.py generate --frames 50 --output test.mkv
 
-# With background video
+# With background video (auto-detects full length)
+python3 generate.py generate --input assets/tears_of_steel_1080p.mov --output test_bg.mkv
+
+# With background video, limited to 50 frames
 python3 generate.py generate --input assets/tears_of_steel_1080p.mov --frames 50 --output test_bg.mkv
 
 # With custom ticker text and quad counters

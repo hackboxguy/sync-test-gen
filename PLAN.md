@@ -47,6 +47,7 @@ All 6 elements from the original C/OpenGL `pgen` binary, reimplemented in Python
 - **Pillow over FFmpeg filter chains**: The binary counter grid, sync dots, and alignment patterns are awkward to express as FFmpeg `drawbox`/`drawtext` filters. Pillow's `ImageDraw` makes them trivial.
 - **Pipe to FFmpeg**: Raw RGB bytes piped to FFmpeg stdin avoids thousands of intermediate PNG files on disk.
 - **Video input via FFmpeg decoder pipe**: Input video is decoded by a separate FFmpeg process piping raw RGB frames. No need to pre-extract PNGs.
-- **Single file**: `generate.py` stays under 700 lines. No package structure needed until it grows significantly.
+- **Auto frame count**: When `--frames` is omitted with `--input`, `ffprobe` reads container metadata (`nb_frames`) or computes from duration. Instant — no frame decoding needed.
+- **Single file**: `generate.py` stays under 800 lines. No package structure needed until it grows significantly.
 - **FFmpeg for streaming**: Replaced GStreamer 0.10 pipeline with `ffmpeg -re -stream_loop -1 ... -f rtp` which is simpler and universally available.
 - **Headless operation**: Replaced C/OpenGL renderer with Python/Pillow — no X11 or GPU required.
