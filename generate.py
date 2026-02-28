@@ -198,12 +198,10 @@ class OverlayRenderer:
         # first, then foreground elements (counter) last to keep them visible.
         if self.enable_grid:
             self._draw_alignment_grid(draw)
-        if self.enable_snow and self.snow_coverage <= 50:
+        if self.enable_snow:
             self._draw_snow(img, frame_number)
         if self.enable_bars:
             self._draw_scrolling_bars(draw, frame_number)
-        if self.enable_snow and self.snow_coverage > 50:
-            self._draw_snow(img, frame_number)
         if self.enable_ticker:
             self._draw_ticker(img, frame_number)
         if self.enable_sync_dots:
