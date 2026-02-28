@@ -58,7 +58,7 @@ All 6 elements from the original C/OpenGL `pgen` binary, reimplemented in Python
 
 1. **Audio sync tone** — Periodic beep (e.g., every 1 second) with a corresponding visual flash. Enables audio-to-video (lip sync) measurement. Currently the tool is video-only (`-an`).
 
-2. **Human-readable frame number** — Decimal frame number text overlay (e.g., "Frame: 00247") for quick visual verification without manually decoding the 8x4 binary grid.
+2. ~~**Human-readable frame number**~~ — **DONE**. `--frame-number` flag with `--frame-number-pos X,Y`. White text with black outline, monospace font, zero-padded, font size proportional to resolution.
 
 3. **Wall clock timestamp burn-in** — Generation timestamp (e.g., `2026-02-27 14:30:05.123`) burned into each frame. Enables absolute glass-to-glass latency measurement by comparing burned-in time with current wall clock at the receiver.
 

@@ -68,9 +68,41 @@ python3 generate.py generate \
   --quad-counters \
   --output sync_test.mkv
 
+# Frame number overlay with quad counters
+python3 generate.py generate \
+  --input video.mp4 \
+  --frame-number \
+  --quad-counters \
+  --output sync_test.mkv
+
 # Stream an encoded file via RTP
 python3 generate.py stream sync_test.mkv 232.22.7.86:3000
 ```
+
+## Example: Creating a 60fps Sync Test Video
+
+A step-by-step example using Tears of Steel as the background:
+
+```bash
+# 1. Extract a 30-second clip starting at 60s into the movie
+ffmpeg -ss 60 -i assets/tears_of_steel_1080p.mov -t 30 \
+  -c:v libx264 -preset fast -an /tmp/tos_30sec.mov
+
+# 2. Generate a 60fps sync test video with selected overlays
+python3 generate.py generate \
+  --input /tmp/tos_30sec.mov \
+  --framerate 60 \
+  --frame-number \
+  --quad-counters \
+  --ticker-text "SYNC TEST STREAM" \
+  --no-snow --no-sync-dots \
+  --output /tmp/sync_test_60fps.mkv
+
+# 3. Verify the output
+ffplay /tmp/sync_test_60fps.mkv
+```
+
+This produces a 1080p video at 60fps with quad binary counters, scrolling bars, alignment grid, a human-readable frame number, and a custom ticker message — suitable for video wall sync testing.
 
 ## Commands
 
@@ -109,6 +141,8 @@ python3 generate.py generate [options] --output FILE
 | `--sync-dot-count N` | `3` | Number of dots per side |
 | `--no-grid` | | Disable alignment grid |
 | `--quad-counters` | | Draw binary counter at top-left of each quadrant (2x2 video wall layout) |
+| `--frame-number` | | Show human-readable frame number overlay |
+| `--frame-number-pos X,Y` | top-right | Frame number position in pixels |
 | `--no-ticker` | | Disable scrolling ticker |
 | `--ticker-speed N` | `10` | Ticker scroll speed in px/frame |
 | `--ticker-text TEXT` | | Custom ticker text (overrides `--ticker-image`) |
@@ -132,6 +166,7 @@ Streams the encoded video file in a loop via RTP/UDP using FFmpeg. Press Ctrl+C 
 ## Overlay Elements
 
 - **Binary Counter**: 32-bit frame number as 8x4 colored rectangle grid (green=1, white=0). Default: single counter at bottom-left. With `--quad-counters`: one counter at the top-left of each screen quadrant (2x2 video wall layout).
+- **Frame Number**: Human-readable decimal frame number (e.g., `0042`) with black outline for visibility. Enabled with `--frame-number`, position adjustable with `--frame-number-pos X,Y`.
 - **Scrolling Bars**: Gray vertical + horizontal bars moving across the frame. Wraps at edges.
 - **Sync Dots**: Red dots scrolling along edges in all 4 screen quadrants.
 - **Alignment Grid**: White checkered squares at frame corners for picture alignment verification.

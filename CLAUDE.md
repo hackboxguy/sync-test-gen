@@ -25,8 +25,9 @@ sync-test-gen/
 
 ## Architecture
 
-- `OverlayRenderer` — Stateful class that renders 6 overlay elements onto RGBA Pillow images. Holds pre-computed snow buffer and scaled ticker image. One instance per generation run.
+- `OverlayRenderer` — Stateful class that renders 7 overlay elements onto RGBA Pillow images. Holds pre-computed snow buffer and scaled ticker image. One instance per generation run.
   - Binary counter: 32-bit frame counter in 8x4 grid. Single (bottom-left) or quad mode (top-left of each quadrant).
+  - Frame number: human-readable decimal counter with black outline, font size proportional to resolution.
   - Scrolling bars, sync dots, alignment grid, ticker (image or text-based), snow/noise.
 - `StreamGenerator` — Pipeline controller. Probes input video frame count via `ffprobe` when `--frames` is omitted, decodes input video via FFmpeg pipe, composites overlays per frame, pipes raw RGB to FFmpeg encoder.
 - `main()` — Argparse CLI with `generate` and `stream` subcommands.

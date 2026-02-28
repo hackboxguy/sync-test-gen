@@ -29,7 +29,9 @@ class OverlayRenderer:
                  enable_bars=True, enable_sync_dots=True, sync_dot_count=3,
                  enable_grid=True, enable_ticker=True, ticker_speed=10,
                  ticker_image=None, ticker_text=None, enable_snow=True,
-                 snow_pixel_size=32, snow_coverage=100, quad_counters=False):
+                 snow_pixel_size=32, snow_coverage=100, quad_counters=False,
+                 enable_frame_number=False, frame_number_pos=None,
+                 total_frames=1000):
         self.width = width
         self.height = height
 
@@ -72,6 +74,39 @@ class OverlayRenderer:
             self._init_snow()
         elif enable_snow and snow_pixel_size <= 0:
             self.enable_snow = False
+
+        # frame number overlay
+        self.enable_frame_number = enable_frame_number
+        self.total_frames = total_frames
+        self._frame_number_font = None
+        if enable_frame_number:
+            # font size proportional to resolution (~70px at 1080p)
+            self._fn_font_size = max(24, int(height * 0.065))
+            self._frame_number_font = self._load_font(self._fn_font_size)
+            # position: user-specified or default top-right
+            if frame_number_pos:
+                self._fn_x, self._fn_y = frame_number_pos
+            else:
+                # default: top-right with some margin
+                self._fn_x = width - int(width * 0.15)
+                self._fn_y = int(height * 0.02)
+            # zero-pad width based on total frames
+            self._fn_pad = len(str(total_frames))
+
+    # -- font loading --
+
+    @staticmethod
+    def _load_font(size):
+        """Load a system font at the given size with fallback."""
+        for font_name in [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "/usr/share/fonts/truetype/liberation/LiberationMono-Bold.ttf",
+            "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+        ]:
+            if Path(font_name).exists():
+                return ImageFont.truetype(font_name, size)
+        return ImageFont.load_default(size)
 
     # -- ticker text rendering --
 
@@ -175,6 +210,8 @@ class OverlayRenderer:
             self._draw_sync_dots(draw, frame_number)
         # binary counter drawn LAST so it's always visible on top
         self._draw_binary_counter(draw, frame_number)
+        if self.enable_frame_number:
+            self._draw_frame_number(draw, frame_number)
 
         return img
 
@@ -239,6 +276,23 @@ class OverlayRenderer:
                 x = ox + pad_x + col * (bit_w + pad_x)
                 y = oy + pad_y + row * (bit_h + pad_y)
                 draw.rectangle([x, y, x + bit_w, y + bit_h], fill=color)
+
+    # -- frame number text --
+
+    def _draw_frame_number(self, draw, frame_number):
+        """Draw human-readable frame number with black outline for visibility."""
+        text = str(frame_number).zfill(self._fn_pad)
+        x, y = self._fn_x, self._fn_y
+        font = self._frame_number_font
+        # black outline (draw text offset in 8 directions)
+        outline = max(1, self._fn_font_size // 18)
+        for dx in range(-outline, outline + 1):
+            for dy in range(-outline, outline + 1):
+                if dx or dy:
+                    draw.text((x + dx, y + dy), text, fill=(0, 0, 0, 255),
+                              font=font)
+        # white text on top
+        draw.text((x, y), text, fill=(255, 255, 255, 255), font=font)
 
     # -- scrolling bars --
 
@@ -514,6 +568,9 @@ class StreamGenerator:
             snow_pixel_size=args.snow_pixel_size,
             snow_coverage=args.snow_coverage,
             quad_counters=args.quad_counters,
+            enable_frame_number=args.frame_number,
+            frame_number_pos=args.frame_number_pos,
+            total_frames=args.frames,
         )
 
         # start encoder
@@ -654,6 +711,17 @@ def parse_resolution(s):
         )
 
 
+def parse_position(s):
+    """Parse 'X,Y' string into (x, y) tuple."""
+    try:
+        x, y = s.split(",")
+        return int(x), int(y)
+    except (ValueError, AttributeError):
+        raise argparse.ArgumentTypeError(
+            f"Invalid position '{s}'. Expected format: X,Y (e.g. 100,50)"
+        )
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Video sync test stream generator",
@@ -707,6 +775,8 @@ def main():
     overlay.add_argument("--sync-dot-count", type=int, default=3, help="Number of sync dots per side (default: 3)")
     overlay.add_argument("--no-grid", action="store_true", help="Disable alignment grid")
     overlay.add_argument("--quad-counters", action="store_true", help="Draw binary counter at top-left of each quadrant (2x2 video wall layout)")
+    overlay.add_argument("--frame-number", action="store_true", help="Show human-readable frame number overlay")
+    overlay.add_argument("--frame-number-pos", type=parse_position, default=None, metavar="X,Y", help="Frame number position in pixels (default: top-right)")
     overlay.add_argument("--no-ticker", action="store_true", help="Disable scrolling ticker")
     overlay.add_argument("--ticker-speed", type=int, default=10, help="Ticker scroll speed (default: 10)")
     overlay.add_argument("--ticker-text", default=None, metavar="TEXT", help="Custom ticker text (overrides --ticker-image)")
