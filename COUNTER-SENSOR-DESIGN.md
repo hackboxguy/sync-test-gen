@@ -279,9 +279,136 @@ python3 generate.py generate \
   --output wall_test.mkv
 ```
 
+## Audio Sync Detection (Lip Sync Measurement)
+
+The `--sync-click N` option generates a 1kHz audio click and a visual white flash every N frames. This enables measuring audio-video sync offset by comparing when the ESP32 detects the visual flash vs the audio click.
+
+### How It Works
+
+1. `generate.py --sync-click 30` produces a video with:
+   - A 10ms 1kHz sine burst in the audio track every 30 frames
+   - A white flash square (bottom-right) in the overlay on the same frames
+2. The display plays the video via HDMI (video + audio)
+3. The ESP32 detects both events and compares timestamps
+
+### Audio Hardware (separate from sensor PCB)
+
+Connect the display's 3.5mm headphone output to an ESP32 ADC pin. No amplifier needed — headphone-level output (~0.5–1.5 Vpp at moderate volume) is strong enough for direct ADC reading.
+
+**Why no amplifier?** ESP32 ADC has 12-bit resolution (0.8mV/step) over 0–3.3V range. A 1kHz click at even 30% volume produces ~300mV swings, which is hundreds of ADC counts above the noise floor.
+
+**Key components:**
+- **10μF coupling capacitor**: Blocks DC from headphone output (which may have a DC bias). Only passes the AC audio signal.
+- **100kΩ bias resistors**: Set a 1.65V DC midpoint so the AC signal rides centered in the ESP32 ADC range.
+
+```
+    HDMI display headphone jack (3.5mm)
+              │
+    Tip ──[10μF cap]──┬──── ESP32 GPIO36 (ADC1_CH0)
+    (Left)            │
+                  3.3V├──[100kΩ]──┐
+                      │           │
+                   GND├──[100kΩ]──┘
+                      │
+    Sleeve ──────── GND
+
+    Silence: ADC reads ~2048 (1.65V bias midpoint)
+    Click:   ADC swings ±300-600 counts above/below 2048
+    Volume:  Set display audio to 50-70%
+```
+
+**BOM for audio input:**
+
+| Component | Value | Notes |
+|-----------|-------|-------|
+| Coupling capacitor | 10μF electrolytic | Blocks DC, passes 1kHz+ audio |
+| Bias resistor | 100kΩ ×2 | Sets 1.65V midpoint |
+| 3.5mm jack breakout | — | Only need Tip (left ch) + Sleeve (GND) |
+
+**Notes:**
+- Only one audio channel needed (left or right) — the click is mono
+- Set display volume to 50-70%; too low = click won't cross threshold, too high = clipping (not harmful, just saturates)
+- The 10μF + 100kΩ gives a high-pass corner of ~0.16Hz, so the 1kHz click passes through with negligible attenuation
+
+### Audio Detection Firmware
+
+```cpp
+#define AUDIO_PIN     36    // ADC1_CH0 (input only, no pull-up)
+#define SILENCE_LEVEL 2048  // ~1.65V midpoint
+#define CLICK_THRESH  500   // deviation from silence to detect click
+
+volatile uint32_t last_click_us = 0;
+
+bool detect_audio_click() {
+    int val = analogRead(AUDIO_PIN);
+    int deviation = abs(val - SILENCE_LEVEL);
+    return deviation > CLICK_THRESH;
+}
+```
+
+### Lip Sync Measurement
+
+```cpp
+void loop() {
+    // Read binary counter from optical sensors
+    uint32_t frame = read_counter();
+    uint32_t now = micros();
+
+    // Detect visual flash: frame number divisible by sync_click interval
+    bool visual_flash = (frame % 30 == 0);
+
+    // Detect audio click
+    bool audio_click = detect_audio_click();
+
+    if (visual_flash) {
+        last_visual_us = now;
+    }
+    if (audio_click && !prev_audio_click) {  // rising edge
+        last_audio_us = now;
+    }
+
+    // When both detected, compute offset
+    if (last_visual_us && last_audio_us) {
+        int32_t offset_us = (int32_t)(last_audio_us - last_visual_us);
+        float offset_ms = offset_us / 1000.0f;
+        Serial.printf("AV sync offset: %.1fms (%s)\n",
+                      fabs(offset_ms),
+                      offset_ms > 0 ? "audio lags" : "audio leads");
+        last_visual_us = 0;
+        last_audio_us = 0;
+    }
+
+    prev_audio_click = audio_click;
+    delayMicroseconds(100);  // sample at ~10kHz
+}
+```
+
+**Interpretation:**
+- **offset > 0**: audio arrives after video (audio lags) — most common
+- **offset < 0**: audio arrives before video (audio leads)
+- **ITU-R BT.1359 tolerance**: audio leading by up to 45ms or lagging by up to 125ms is acceptable
+
+### Software Integration
+
+```bash
+# Generate video with audio clicks every 30 frames (1 click/sec at 30fps)
+python3 generate.py generate \
+  --sensor-mode --display-size 24 --sensor-pcb 100x50 \
+  --sync-click 30 \
+  --no-snow --no-sync-dots \
+  --output av_sync_test.mkv
+
+# For 60fps: click every 60 frames = 1 click/sec
+python3 generate.py generate \
+  --framerate 60 --sensor-mode --display-size 24 --sensor-pcb 100x50 \
+  --sync-click 60 \
+  --output av_sync_test_60fps.mkv
+```
+
 ## Mechanical Mounting
 
 - Mount sensor PCB flush against display with suction cups or 3D-printed clip
 - FFC cable exits from bottom edge, routes downward away from display
+- Audio cable (3.5mm) connects from display headphone jack to ESP32 board
 - For video wall: one sensor PCB per display, FFC cables routed to central ESP32
 - Consider light-blocking gasket (foam tape around PCB edge) to prevent ambient light interference

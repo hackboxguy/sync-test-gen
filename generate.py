@@ -33,9 +33,11 @@ class OverlayRenderer:
                  snow_pixel_size=32, snow_coverage=100, quad_counters=False,
                  enable_frame_number=False, frame_number_pos=None,
                  total_frames=1000, sensor_mode=False,
-                 display_size=None, sensor_pcb_size=None):
+                 display_size=None, sensor_pcb_size=None,
+                 sync_click=0):
         self.width = width
         self.height = height
+        self.sync_click = sync_click
 
         # binary counter mode
         self.quad_counters = quad_counters
@@ -223,6 +225,8 @@ class OverlayRenderer:
         self._draw_binary_counter(draw, frame_number)
         if self.enable_frame_number:
             self._draw_frame_number(draw, frame_number)
+        if self.sync_click and frame_number % self.sync_click == 0:
+            self._draw_sync_flash(draw)
 
         return img
 
@@ -319,6 +323,18 @@ class OverlayRenderer:
                               font=font)
         # white text on top
         draw.text((x, y), text, fill=(255, 255, 255, 255), font=font)
+
+    # -- sync flash --
+
+    def _draw_sync_flash(self, draw):
+        """Draw a white flash square on sync click frames."""
+        size = int(0.04 * self.width)
+        border = int(0.02 * self.width)
+        border_y = int(0.02 * self.height)
+        # position: bottom-right corner (away from binary counter at bottom-left)
+        x = self.width - border - size
+        y = self.height - border_y - size
+        draw.rectangle([x, y, x + size, y + size], fill=(255, 255, 255, 255))
 
     # -- scrolling bars --
 
@@ -607,10 +623,19 @@ class StreamGenerator:
             sensor_mode=args.sensor_mode,
             display_size=display_size,
             sensor_pcb_size=sensor_pcb,
+            sync_click=args.sync_click,
         )
 
+        # generate audio clicks if requested
+        audio_file = None
+        if args.sync_click and args.sync_click > 0:
+            print(f"Generating audio clicks every {args.sync_click} frames ...")
+            audio_file = self._generate_click_audio(
+                args.frames, args.framerate, args.sync_click
+            )
+
         # start encoder
-        encoder = self._start_encoder(args)
+        encoder = self._start_encoder(args, audio_file=audio_file)
 
         # start decoder if input video provided
         decoder = None
@@ -652,6 +677,8 @@ class StreamGenerator:
             if decoder:
                 decoder.stdout.close()
                 decoder.wait()
+            if audio_file:
+                os.unlink(audio_file)
 
         print(f"Done. Output: {args.output}")
 
@@ -682,7 +709,40 @@ class StreamGenerator:
 
     # -- helpers --
 
-    def _start_encoder(self, args):
+    def _generate_click_audio(self, total_frames, framerate, click_interval):
+        """Generate a WAV file with 1kHz sine clicks every click_interval frames."""
+        import tempfile
+        import wave
+
+        sample_rate = 48000
+        duration = total_frames / framerate
+        total_samples = int(duration * sample_rate)
+        samples_per_frame = sample_rate / framerate
+        click_samples = int(0.01 * sample_rate)  # 10ms burst
+
+        # build audio buffer (16-bit PCM mono, initialized to silence)
+        audio = bytearray(total_samples * 2)
+        for frame in range(1, total_frames + 1):
+            if frame % click_interval == 0:
+                start = int((frame - 1) * samples_per_frame)
+                for s in range(click_samples):
+                    idx = start + s
+                    if idx < total_samples:
+                        val = int(32000 * math.sin(
+                            2 * math.pi * 1000 * s / sample_rate
+                        ))
+                        struct.pack_into('<h', audio, idx * 2, val)
+
+        tmp = tempfile.NamedTemporaryFile(suffix='.wav', delete=False)
+        tmp.close()
+        with wave.open(tmp.name, 'w') as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(sample_rate)
+            wf.writeframes(bytes(audio))
+        return tmp.name
+
+    def _start_encoder(self, args, audio_file=None):
         codec = CODEC_MAP.get(args.codec)
         if not codec:
             print(f"Error: unsupported codec '{args.codec}'")
@@ -694,12 +754,19 @@ class StreamGenerator:
             "-s", f"{args.width}x{args.height}",
             "-r", str(args.framerate),
             "-i", "pipe:0",
-            "-an",
+        ]
+        if audio_file:
+            cmd += ["-i", audio_file, "-map", "0:v", "-map", "1:a"]
+        else:
+            cmd += ["-an"]
+        cmd += [
             "-c:v", codec,
             "-b:v", args.bitrate,
             "-pix_fmt", "yuv420p",
-            args.output,
         ]
+        if audio_file:
+            cmd += ["-c:a", "aac", "-b:a", "128k"]
+        cmd.append(args.output)
         return subprocess.Popen(cmd, stdin=subprocess.PIPE)
 
     def _start_decoder(self, args):
@@ -836,6 +903,7 @@ def main():
     sensor.add_argument("--sensor-mode", action="store_true", help="Render binary counter as bright=1/black=0 for optical sensors")
     sensor.add_argument("--display-size", type=float, default=None, metavar="INCHES", help="Diagonal display size in inches (e.g. 24)")
     sensor.add_argument("--sensor-pcb", type=parse_dimensions, default=None, metavar="WxH", help="Sensor PCB dimensions in mm (e.g. 80x40)")
+    sensor.add_argument("--sync-click", type=int, default=0, metavar="N", help="Generate audio click + visual flash every N frames (e.g. 30 = 1 click/sec at 30fps)")
 
     # -- stream subcommand --
     st = subparsers.add_parser(

@@ -171,6 +171,7 @@ python3 generate.py generate [options] --output FILE
 | `--sensor-mode` | | Render binary counter as bright=1/black=0 for optical sensors |
 | `--display-size INCHES` | | Diagonal display size in inches (e.g. `24`) |
 | `--sensor-pcb WxH` | | Sensor PCB dimensions in mm (e.g. `80x40`) |
+| `--sync-click N` | `0` | Generate audio click + visual flash every N frames (e.g. `30` = 1/sec at 30fps) |
 
 `--display-size` and `--sensor-pcb` must be used together. They compute the exact pixel dimensions for the binary counter grid so it matches the physical sensor PCB when displayed on the specified monitor. `--sensor-mode` can be used alone (changes colors only) or combined with the sizing options.
 

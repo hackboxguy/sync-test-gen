@@ -57,7 +57,7 @@ All 6 elements from the original C/OpenGL `pgen` binary, reimplemented in Python
 
 ### High Priority
 
-1. **Audio sync tone** — Periodic beep (e.g., every 1 second) with a corresponding visual flash. Enables audio-to-video (lip sync) measurement. Currently the tool is video-only (`-an`).
+1. ~~**Audio sync tone**~~ — **DONE**. `--sync-click N` generates a 1kHz audio click + visual flash every N frames. Enables lip sync measurement with ESP32 sensor board. See `COUNTER-SENSOR-DESIGN.md` for hardware details.
 
 2. ~~**Human-readable frame number**~~ — **DONE**. `--frame-number` flag with `--frame-number-pos X,Y`. White text with black outline, monospace font, zero-padded, font size proportional to resolution.
 
