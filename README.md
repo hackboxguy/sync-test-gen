@@ -75,6 +75,19 @@ python3 generate.py generate \
   --quad-counters \
   --output sync_test.mkv
 
+# Sensor mode: bright=1/black=0 for optical sensor reading
+python3 generate.py generate \
+  --input video.mp4 \
+  --sensor-mode \
+  --output sync_test.mkv
+
+# Sensor mode with physical PCB sizing (24" display, 80x40mm PCB)
+python3 generate.py generate \
+  --input video.mp4 \
+  --sensor-mode --display-size 24 --sensor-pcb 80x40 \
+  --quad-counters \
+  --output sync_test.mkv
+
 # Stream an encoded file via RTP
 python3 generate.py stream sync_test.mkv 232.22.7.86:3000
 ```
@@ -151,6 +164,16 @@ python3 generate.py generate [options] --output FILE
 | `--snow-pixel-size N` | `32` | Snow block size in pixels (0 = disable) |
 | `--snow-coverage N` | `100` | Snow area as % of screen |
 
+**Sensor mode options:**
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--sensor-mode` | | Render binary counter as bright=1/black=0 for optical sensors |
+| `--display-size INCHES` | | Diagonal display size in inches (e.g. `24`) |
+| `--sensor-pcb WxH` | | Sensor PCB dimensions in mm (e.g. `80x40`) |
+
+`--display-size` and `--sensor-pcb` must be used together. They compute the exact pixel dimensions for the binary counter grid so it matches the physical sensor PCB when displayed on the specified monitor. `--sensor-mode` can be used alone (changes colors only) or combined with the sizing options.
+
 ### `stream` — RTP stream a video file
 
 ```
@@ -165,7 +188,7 @@ Streams the encoded video file in a loop via RTP/UDP using FFmpeg. Press Ctrl+C 
 
 ## Overlay Elements
 
-- **Binary Counter**: 32-bit frame number as 8x4 colored rectangle grid (green=1, white=0). Default: single counter at bottom-left. With `--quad-counters`: one counter at the top-left of each screen quadrant (2x2 video wall layout).
+- **Binary Counter**: 32-bit frame number as 8x4 colored rectangle grid (green=1, white=0). Default: single counter at bottom-left. With `--quad-counters`: one counter at the top-left of each screen quadrant (2x2 video wall layout). With `--sensor-mode`: renders as bright=1/black=0 for reading with optical sensors (e.g., TEPT5700 phototransistors + ESP32).
 - **Frame Number**: Human-readable decimal frame number (e.g., `0042`) with black outline for visibility. Enabled with `--frame-number`, position adjustable with `--frame-number-pos X,Y`.
 - **Scrolling Bars**: Gray vertical + horizontal bars moving across the frame. Wraps at edges.
 - **Sync Dots**: Red dots scrolling along edges in all 4 screen quadrants.

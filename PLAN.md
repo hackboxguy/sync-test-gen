@@ -30,7 +30,7 @@ No intermediate files on disk. Single pass. Memory efficient (one frame at a tim
 
 All 6 elements from the original C/OpenGL `pgen` binary, reimplemented in Python/Pillow:
 
-1. **Binary Counter** — 32-bit frame number displayed as 8x4 grid of colored rectangles. Green = 1, white = 0, on black background. Default: single counter at bottom-left. With `--quad-counters`: one counter at top-left of each screen quadrant (2x2 video wall layout). Essential for frame-accurate sync verification.
+1. **Binary Counter** — 32-bit frame number displayed as 8x4 grid of colored rectangles. Normal mode: green = 1, white = 0, on black background. Sensor mode (`--sensor-mode`): white = 1, black = 0, optimized for optical reading with phototransistors. Default: single counter at bottom-left. With `--quad-counters`: one counter at top-left of each screen quadrant (2x2 video wall layout). With `--display-size` + `--sensor-pcb`: counter grid sized to match physical sensor PCB dimensions on a specific display. Essential for frame-accurate sync verification.
 
 2. **Scrolling Bars** — Gray vertical and horizontal bars that scroll across the frame at configurable speed. Used to detect motion/timing issues.
 
@@ -51,6 +51,7 @@ All 6 elements from the original C/OpenGL `pgen` binary, reimplemented in Python
 - **Single file**: `generate.py` stays under 800 lines. No package structure needed until it grows significantly.
 - **FFmpeg for streaming**: Replaced GStreamer 0.10 pipeline with `ffmpeg -re -stream_loop -1 ... -f rtp` which is simpler and universally available.
 - **Headless operation**: Replaced C/OpenGL renderer with Python/Pillow — no X11 or GPU required.
+- **Sensor mode**: Binary counter can render as bright/black (white=1, black=0) for optical sensor reading. Counter grid size can be matched to a physical sensor PCB by specifying display diagonal (`--display-size`) and PCB dimensions (`--sensor-pcb`). Pixel sizing is computed from the display's pixels-per-mm ratio.
 
 ## Future Features
 
@@ -68,7 +69,7 @@ All 6 elements from the original C/OpenGL `pgen` binary, reimplemented in Python
 
 5. **Additional streaming protocols** — SRT (Secure Reliable Transport) and RIST support beyond RTP. Both are supported by FFmpeg and widely used in modern AV-over-IP.
 
-6. **Binary counter decoder** — A companion mode that takes a screenshot/frame as input, reads the binary counter grid, and outputs the frame number. Closes the loop for automated latency measurement.
+6. ~~**Binary counter decoder (software)**~~ — Partially addressed by `--sensor-mode` which enables hardware optical reading via ESP32 + phototransistor array. A software decoder (screenshot → frame number) remains a future option for automated testing without hardware.
 
 7. **Color bars** — SMPTE or EBU color bars for display calibration. Common in broadcast test patterns.
 

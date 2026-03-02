@@ -8,6 +8,7 @@ PNG directory or video file) and encoded via FFmpeg.
 """
 
 import argparse
+import math
 import os
 import random
 import struct
@@ -31,12 +32,24 @@ class OverlayRenderer:
                  ticker_image=None, ticker_text=None, enable_snow=True,
                  snow_pixel_size=32, snow_coverage=100, quad_counters=False,
                  enable_frame_number=False, frame_number_pos=None,
-                 total_frames=1000):
+                 total_frames=1000, sensor_mode=False,
+                 display_size=None, sensor_pcb_size=None):
         self.width = width
         self.height = height
 
         # binary counter mode
         self.quad_counters = quad_counters
+        self.sensor_mode = sensor_mode
+
+        # sensor PCB sizing: compute pixel dimensions for counter grid
+        self._sensor_grid_w = None
+        self._sensor_grid_h = None
+        if display_size and sensor_pcb_size:
+            diag_px = math.sqrt(width ** 2 + height ** 2)
+            diag_mm = display_size * 25.4  # inches to mm
+            px_per_mm = diag_px / diag_mm
+            self._sensor_grid_w = int(sensor_pcb_size[0] * px_per_mm)
+            self._sensor_grid_h = int(sensor_pcb_size[1] * px_per_mm)
 
         # bars
         self.enable_bars = enable_bars
@@ -218,22 +231,34 @@ class OverlayRenderer:
     def _draw_binary_counter(self, draw, frame_number):
         """Draw 32-bit frame counter as 8x4 grid of rectangles.
 
-        Green = 1-bit, white = 0-bit, on black background.
+        Normal mode: green = 1-bit, white = 0-bit, on black background.
+        Sensor mode: white = 1-bit, black = 0-bit (for optical sensors).
         Default: single counter at bottom-left.
         With --quad-counters: one counter at the top-left of each quadrant
         (frame divided into a 2x2 video wall layout).
         """
         bits = 32
         cols = 8
+        n_rows = bits // cols
 
-        bit_w = int(0.02 * self.width)
-        bit_h = int(0.02 * self.height)
-        pad_x = int(0.004 * self.width)
-        pad_y = int(0.004 * self.height)
+        if self._sensor_grid_w:
+            # fixed grid size to match sensor PCB dimensions
+            total_w = self._sensor_grid_w
+            total_h = self._sensor_grid_h
+            pad_x = max(1, total_w // (cols * 6))
+            pad_y = max(1, total_h // (n_rows * 6))
+            bit_w = (total_w - (cols + 1) * pad_x) // cols
+            bit_h = (total_h - (n_rows + 1) * pad_y) // n_rows
+        else:
+            # proportional sizing (original behavior)
+            bit_w = int(0.02 * self.width)
+            bit_h = int(0.02 * self.height)
+            pad_x = int(0.004 * self.width)
+            pad_y = int(0.004 * self.height)
+
         border = int(0.02 * self.width)
         border_y = int(0.02 * self.height)
 
-        n_rows = bits // cols
         bg_w = cols * (pad_x + bit_w) + pad_x
         bg_h = n_rows * (pad_y + bit_h) + pad_y
 
@@ -266,7 +291,10 @@ class OverlayRenderer:
                 bit_idx = 7 - (i % 8)
                 bit_val = (data[byte_idx] >> bit_idx) & 1
 
-                color = (0, 255, 0, 255) if bit_val else (255, 255, 255, 255)
+                if self.sensor_mode:
+                    color = (255, 255, 255, 255) if bit_val else (0, 0, 0, 255)
+                else:
+                    color = (0, 255, 0, 255) if bit_val else (255, 255, 255, 255)
 
                 col = i % cols
                 row = i // cols
@@ -550,6 +578,13 @@ class StreamGenerator:
             else:
                 args.frames = 1000
 
+        # validate sensor PCB options
+        display_size = getattr(args, 'display_size', None)
+        sensor_pcb = getattr(args, 'sensor_pcb', None)
+        if (display_size is None) != (sensor_pcb is None):
+            print("Error: --display-size and --sensor-pcb must be used together")
+            sys.exit(1)
+
         renderer = OverlayRenderer(
             width, height,
             bar_width=args.bar_width,
@@ -569,6 +604,9 @@ class StreamGenerator:
             enable_frame_number=args.frame_number,
             frame_number_pos=args.frame_number_pos,
             total_frames=args.frames,
+            sensor_mode=args.sensor_mode,
+            display_size=display_size,
+            sensor_pcb_size=sensor_pcb,
         )
 
         # start encoder
@@ -720,6 +758,17 @@ def parse_position(s):
         )
 
 
+def parse_dimensions(s):
+    """Parse 'WxH' string into (width_mm, height_mm) tuple for --sensor-pcb."""
+    try:
+        w, h = s.lower().split("x")
+        return float(w), float(h)
+    except (ValueError, AttributeError):
+        raise argparse.ArgumentTypeError(
+            f"Invalid dimensions '{s}'. Expected format: WxH in mm (e.g. 80x40)"
+        )
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Video sync test stream generator",
@@ -782,6 +831,11 @@ def main():
     overlay.add_argument("--no-snow", action="store_true", help="Disable snow/noise pattern")
     overlay.add_argument("--snow-pixel-size", type=int, default=32, help="Snow block size in pixels (default: 32, 0=disable)")
     overlay.add_argument("--snow-coverage", type=int, default=100, help="Snow area as %% of screen (default: 100)")
+    # sensor mode options
+    sensor = gen.add_argument_group("sensor mode options")
+    sensor.add_argument("--sensor-mode", action="store_true", help="Render binary counter as bright=1/black=0 for optical sensors")
+    sensor.add_argument("--display-size", type=float, default=None, metavar="INCHES", help="Diagonal display size in inches (e.g. 24)")
+    sensor.add_argument("--sensor-pcb", type=parse_dimensions, default=None, metavar="WxH", help="Sensor PCB dimensions in mm (e.g. 80x40)")
 
     # -- stream subcommand --
     st = subparsers.add_parser(

@@ -26,7 +26,7 @@ sync-test-gen/
 ## Architecture
 
 - `OverlayRenderer` — Stateful class that renders 7 overlay elements onto RGBA Pillow images. Holds pre-computed snow buffer and scaled ticker image. One instance per generation run.
-  - Binary counter: 32-bit frame counter in 8x4 grid. Single (bottom-left) or quad mode (top-left of each quadrant).
+  - Binary counter: 32-bit frame counter in 8x4 grid. Single (bottom-left) or quad mode (top-left of each quadrant). Sensor mode: white=1/black=0 for optical reading. Physical PCB sizing via `--display-size` + `--sensor-pcb`.
   - Frame number: human-readable decimal counter with black outline, font size proportional to resolution.
   - Scrolling bars, sync dots, alignment grid, ticker (image or text-based), snow/noise.
 - `StreamGenerator` — Pipeline controller. Probes input video frame count via `ffprobe` when `--frames` is omitted, decodes input video via FFmpeg pipe, composites overlays per frame, pipes raw RGB to FFmpeg encoder.
@@ -54,6 +54,9 @@ python3 generate.py generate --input assets/tears_of_steel_1080p.mov --frames 50
 
 # With custom ticker text and quad counters
 python3 generate.py generate --input assets/tears_of_steel_1080p.mov --ticker-text "TEST" --quad-counters --frames 50 --output test_quad.mkv
+
+# Sensor mode with physical PCB sizing
+python3 generate.py generate --frames 50 --sensor-mode --display-size 24 --sensor-pcb 80x40 --quad-counters --output test_sensor.mkv
 
 # Verify output
 ffplay test.mkv
