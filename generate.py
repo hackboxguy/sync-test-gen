@@ -759,11 +759,13 @@ class StreamGenerator:
             cmd += ["-i", audio_file, "-map", "0:v", "-map", "1:a"]
         else:
             cmd += ["-an"]
-        cmd += [
-            "-c:v", codec,
-            "-b:v", args.bitrate,
-            "-pix_fmt", "yuv420p",
-        ]
+        cmd += ["-c:v", codec]
+        if args.bitrate:
+            cmd += ["-b:v", args.bitrate]
+        else:
+            crf_flag = "-crf" if args.codec != "av1" else "-crf"
+            cmd += [crf_flag, str(args.crf)]
+        cmd += ["-pix_fmt", "yuv420p"]
         if audio_file:
             cmd += ["-c:a", "aac", "-b:a", "128k"]
         cmd.append(args.output)
@@ -865,8 +867,12 @@ def main():
         help="Video codec (default: h264)",
     )
     gen.add_argument(
-        "--bitrate", default="4M",
-        help="Encoding bitrate (default: 4M)",
+        "--bitrate", default=None,
+        help="Encoding bitrate (e.g. 4M, 8M). Overrides --crf when set.",
+    )
+    gen.add_argument(
+        "--crf", type=int, default=18,
+        help="Constant quality factor (default: 18, lower=better, 0=lossless). Ignored if --bitrate is set.",
     )
     gen.add_argument(
         "--input", metavar="FILE",

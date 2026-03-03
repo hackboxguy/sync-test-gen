@@ -1,4 +1,5 @@
-assets/
+assets/*
+!assets/custom-ticker.tga
 __pycache__/
 *.pyc
 *.mkv
