@@ -133,7 +133,8 @@ python3 generate.py generate [options] --output FILE
 | `--framerate FPS` | `30` | Frame rate in fps |
 | `--frames N` | auto / `1000` | Number of frames (default: full input video length, or 1000 if no input) |
 | `--codec` | `h264` | Video codec: `h264`, `h265`, or `av1` |
-| `--bitrate BR` | `4M` | Encoding bitrate |
+| `--crf N` | `18` | Constant quality factor (lower = better, 0 = lossless) |
+| `--bitrate BR` | *(off)* | Encoding bitrate (e.g. `4M`, `8M`). Overrides `--crf` when set. |
 | `--output FILE` | *(required)* | Output video file path |
 
 **Input options:**
